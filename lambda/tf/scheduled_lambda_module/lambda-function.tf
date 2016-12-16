@@ -18,7 +18,7 @@ variable "runtime" {
 }
 
 module "iam_module" {
-  source = "github.com/alistanis/awstools//lambda/ami-snapshots/tf/iam_module"
+  source = "github.com/alistanis/awstools//lambda/tf/iam_module"
   #name = "iam_module"
 }
 

@@ -5,7 +5,7 @@ module "s3" {
 }
 
 module "scheduled_lambda_module" {
-  source = "github.com/alistanis/awstools//lambda/ami-snapshots/tf/scheduled_lambda_module"
+  source = "github.com/alistanis/awstools//lambda/tf/scheduled_lambda_module"
  # name = "create_lambda_function"
   lambda_function_suffix = "snapshots"
   lambda_s3_bucket = "${module.s3.s3_bucket_name}"
