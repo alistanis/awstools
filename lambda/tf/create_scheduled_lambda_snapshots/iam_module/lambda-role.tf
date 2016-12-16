@@ -1,5 +1,5 @@
 resource "aws_iam_role" "lambda_execute_role" {
-  name = "lambda_execute_role"
+  name = "lambda-execute-role"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",

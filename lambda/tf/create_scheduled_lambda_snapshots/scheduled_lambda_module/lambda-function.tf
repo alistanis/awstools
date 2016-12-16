@@ -17,15 +17,15 @@ variable "runtime" {
   default = "python2.7"
 }
 
-module "iam_module" {
-  source = "github.com/alistanis/awstools//lambda/ami-snapshots/tf/iam_module"
-  #name = "iam_module"
+module "lambda_iam_module" {
+  source = "../iam_module"
+  name = "lambda_iam_module"
 }
 
 resource "aws_lambda_function" "function" {
   s3_bucket = "${var.lambda_s3_bucket}"
-  function_name = "${join(list("lambda-scheduled_", var.lambda_function_suffix))}"
-  role = "${module.iam_module.lambda_execute_arn}"
+  function_name = "${join("lambda-scheduled_", var.lambda_function_suffix)}"
+  role = "${module.lambda_iam_module.lambda_execute_arn}"
   handler = "${var.lambda_handler}"
   runtime = "${var.runtime}"
 }
