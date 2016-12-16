@@ -1,3 +1,6 @@
+//----------
+// Variables
+//----------
 
 # lambda function variables
 variable "lambda_function_suffix" {}
@@ -17,10 +20,17 @@ variable "runtime" {
   default = "python2.7"
 }
 
+
+//----------------
+// Call IAM Module
+//----------------
 module "iam_module" {
-  source = "github.com/alistanis/awstools//lambda/tf/iam_module"
-  #name = "iam_module"
+  source = "../iam_module"
 }
+
+//--------------------------
+// Lambda specific resources
+//--------------------------
 
 resource "aws_lambda_function" "function" {
   s3_bucket = "${var.lambda_s3_bucket}"

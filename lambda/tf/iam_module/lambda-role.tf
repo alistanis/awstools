@@ -17,10 +17,6 @@ resource "aws_iam_role" "lambda_execute_role" {
 EOF
 }
 
-/*output "lambda-execute-arn" {
-  value = "${aws_iam_role.lambda-execute-role.arn}"
-}*/
-
 resource "aws_iam_role_policy_attachment" "lambda_ec2_attachment" {
   role = "${aws_iam_role.lambda_execute_role.name}"
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
@@ -40,3 +36,6 @@ resource "aws_iam_role_policy_attachment" "lambda_cloudwatch_attachment" {
   role = "${aws_iam_role.lambda_execute_role.name}"
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchFullAccess"
 }
+
+
+output "lambda_execute_arn" {value = "${aws_iam_role.lambda_execute_role.arn}"}
