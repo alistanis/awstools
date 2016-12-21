@@ -19,6 +19,7 @@ module "scheduled_lambda_module" {
   lambda_s3_bucket = "${module.s3.s3_bucket_name}"
   rate_name = "once-daily"
   rate_description = "This event will fire once daily at the specified time."
+  // this will launch once a day at 9PM
   rate_schedule_expression = "cron(* 20 * * ? *)"
   cloudwatch_event_target_id = "LambdaScheduledSnapshots"
 }

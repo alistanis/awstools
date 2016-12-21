@@ -8,5 +8,5 @@ import (
 func init() {}
 
 func main() {
-	lambda.HandleWithParams(handlers.RequiredParams, handlers.CheckSnapshot)
+	lambda.HandleWithParams(nil, handlers.CheckSnapshot)
 }

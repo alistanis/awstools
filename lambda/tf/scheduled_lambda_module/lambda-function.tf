@@ -20,6 +20,9 @@ variable "runtime" {
   default = "python2.7"
 }
 
+variable "timeout" {
+  default = 300
+}
 
 //----------------
 // Call IAM Module
@@ -38,6 +41,7 @@ resource "aws_lambda_function" "function" {
   role = "${module.iam_module.lambda_execute_arn}"
   handler = "${var.lambda_handler}"
   runtime = "${var.runtime}"
+  timeout = "${var.timeout}"
 }
 
 resource "aws_cloudwatch_event_rule" "rate" {

@@ -31,3 +31,4 @@ resource "aws_s3_bucket_object" "lambda_payload" {
 }
 
 output "s3_bucket_name" {value= "${aws_s3_bucket.s3_bucket.bucket}"}
+output "lambda_version_id" {value= "${aws_s3_bucket_object.lambda_payload.version_id}"}
