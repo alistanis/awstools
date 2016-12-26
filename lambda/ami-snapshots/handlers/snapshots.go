@@ -6,11 +6,12 @@ import (
 
 	"fmt"
 
+	"os"
+
 	"github.com/alistanis/awstools/awsregions"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/eawsy/aws-lambda-go/service/lambda/runtime"
+	"github.com/thisisfineio/calculate"
 )
 
 const (
@@ -19,12 +20,16 @@ const (
 )
 
 var (
-	service *ec2.EC2
+	service *calculate.EC2
 )
 
 func init() {
+	awsRegion := os.Getenv("AWS_REGION")
+	if awsRegion == "" {
+		awsRegion = awsregions.USEast1
+	}
 	// This will pick up credentials in the order of precedence specified by the AWS SDK
-	service = ec2.New(session.New(&aws.Config{Region: aws.String(awsregions.USEast1)}))
+	service = *calculate.NewEC2(awsRegion)
 }
 
 type CreateSnapshotRequest struct {
@@ -58,19 +63,9 @@ func CreateSnapshot(evt json.RawMessage, ctx *runtime.Context) (interface{}, err
 		n := "Name"
 		input := &ec2.DescribeInstancesInput{Filters: []*ec2.Filter{{Name: &n, Values: req.SnapshotPatterns}}}
 
-		// TODO - wrap this like I have done for work libraries - why this isn't part of the default lib I have no idea
-		instances, err := service.DescribeInstances(input)
+		instances, err := service.DescribeEC2Instances(input)
 		if err != nil {
 			return nil, err
-		}
-		for instances.NextToken != nil {
-			input.NextToken = instances.NextToken
-			i, err := service.DescribeInstances(input)
-			if err != nil {
-				return nil, err
-			}
-			instances.Reservations = append(instances.Reservations, i.Reservations...)
-			instances.NextToken = i.NextToken
 		}
 		if len(instances.Reservations == 0) {
 			return nil, fmt.Errorf("No instances found matching name tags: %s", req.SnapshotPatterns)
