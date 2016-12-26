@@ -29,7 +29,7 @@ func init() {
 		awsRegion = awsregions.USEast1
 	}
 	// This will pick up credentials in the order of precedence specified by the AWS SDK
-	service = *calculate.NewEC2(awsRegion)
+	service = calculate.NewEC2(awsRegion)
 }
 
 type CreateSnapshotRequest struct {
@@ -67,7 +67,7 @@ func CreateSnapshot(evt json.RawMessage, ctx *runtime.Context) (interface{}, err
 		if err != nil {
 			return nil, err
 		}
-		if len(instances.Reservations == 0) {
+		if len(instances.Reservations) == 0 {
 			return nil, fmt.Errorf("No instances found matching name tags: %s", req.SnapshotPatterns)
 		}
 
