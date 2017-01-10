@@ -22,4 +22,7 @@ module "scheduled_lambda_module" {
   // this will launch once a day at 9PM
   rate_schedule_expression = "cron(* 20 * * ? *)"
   cloudwatch_event_target_id = "LambdaScheduledSnapshots"
+  payload = <<EOF
+{"filters": {"": ""}", "snapshot_type": ""}
+EOF
 }
