@@ -93,73 +93,12 @@ func CreateSnapshot(evt json.RawMessage, ctx *runtime.Context) (interface{}, err
 
 	switch req.SnapshotType {
 	case InstanceSnapshot:
-		// TODO - break into functions
-		log.Printf("Searching for an appropriate instance to snapshot... filters: %s\n", filters)
-		// this assumes your instancesOutput are tagged with a Name key
-		input := &ec2.DescribeInstancesInput{Filters: filters}
-
-		instancesOutput, err := service.DescribeEC2Instances(input)
+		err := createAMISnapshot(filters, req)
+		// explicitly return error here because i don't know how lambda treats both a value and an error
 		if err != nil {
 			return nil, err
 		}
-		if len(instancesOutput.Reservations) == 0 {
-			return nil, fmt.Errorf("No instancesOutput found matching filters: %s", filters)
-		}
-
-		instances := make([]*ec2.Instance, 0)
-		for _, r := range instancesOutput.Reservations {
-			instances = append(instances, r.Instances...)
-		}
-
-		if len(instances) > 1 {
-			if !req.ChooseFirstResult {
-				return nil, errors.New("Mutliple results found without specifying to choose the first result. Please choose more restrictive filters.")
-			}
-		}
-
-		instance := instances[0]
-
-		input := &ec2.CreateImageInput{NoReboot: &req.NoReboot}
-
-		curTime := time.Now().Format("2006-01-02-15-04-05")
-		input.Description = aws.String(fmt.Sprintf("Created by running lambda on %s. Originating VPC: %s, Original InstanceID: %s", curTime, *instance.VpcId, *instance.ImageId))
-		input.InstanceId = instance.InstanceId
-		var name string
-		for _, t := range instance.Tags {
-			if t.Key != nil && t.Value != nil {
-				if *t.Key == "Name" {
-					name = fmt.Sprintf("%s-image-%s", *t.Value, curTime)
-				}
-			}
-		}
-		if name == "" {
-			name = fmt.Sprintf("%s-image-%s", *instance.InstanceId, curTime)
-		}
-		
-		input.Name = aws.String(name)
-
-		output, err := service.CreateImage(&calculate.CreateImageInput{AwsInput:&ec2.CreateImageInput{InstanceId:instance.InstanceId}})
-		if err != nil {
-			return nil, err
-		}
-
-		for {
-			fmt.Println("Checking images...")
-
-			image, err := service.DescribeImages(&calculate.DescribeImagesInput{AwsInput:&ec2.DescribeImagesInput{ImageIds:[]*string{output.AwsOutput.ImageId}}})
-			if err != nil {
-				log.Fatal(err)
-			}
-			state := *image.AwsOutput.Images[0].State
-			finished := state == "available"
-			if finished {
-				log.Println("Image has finished!")
-				break
-			}
-			log.Println("Sleeping for 5 seconds before checking again...")
-			time.Sleep(time.Duration(time.Second * 5))
-		}
-
+		return fmt.Sprintf("Instance snapshot successfully completed at %s", time.Now().Format("2006-01-02-15-04-05")), nil
 
 	case AutoscalingSnapshot:
 		log.Println("Do autoscaling snapshot things, such as finding an ASG, an instance, snapshotting the instance, updating the ASG, respinning other instancesOutput, etc")
@@ -178,16 +117,82 @@ func DeleteSnapshot(evt json.RawMessage, ctx *runtime.Context) (interface{}, err
 	return "", nil
 }
 
-func CheckImages(ids []string) (bool, error) {
-	idptrs := util.StringSliceToPointers(ids)
-	images, err := service.DescribeImages(&ec2.DescribeImagesInput{ImageIds: idptrs})
+func createAMISnapshot(filters []*ec2.Filter, req *CreateSnapshotRequest) error {
+	log.Printf("Searching for an appropriate instance to snapshot... filters: %s\n", filters)
+
+	instance, err := findInstance(filters, req.ChooseFirstResult)
 	if err != nil {
-		return false, err
+		return err
 	}
-	for _, s := range images.Images {
-		if *s.State != "available" {
-			return false, nil
+	input := &ec2.CreateImageInput{NoReboot: &req.NoReboot}
+
+	curTime := time.Now().Format("2006-01-02-15-04-05")
+	input.Description = aws.String(fmt.Sprintf("Created by running lambda on %s. Originating VPC: %s, Original InstanceID: %s", curTime, *instance.VpcId, *instance.ImageId))
+	input.InstanceId = instance.InstanceId
+	var name string
+	for _, t := range instance.Tags {
+		if t.Key != nil && t.Value != nil {
+			if *t.Key == "Name" {
+				name = fmt.Sprintf("%s-image-%s", *t.Value, curTime)
+			}
 		}
 	}
-	return true, nil
+	if name == "" {
+		name = fmt.Sprintf("%s-image-%s", *instance.InstanceId, curTime)
+	}
+
+	input.Name = aws.String(name)
+
+	output, err := service.CreateImage(&calculate.CreateImageInput{AwsInput:&ec2.CreateImageInput{InstanceId:instance.InstanceId}})
+	if err != nil {
+		return err
+	}
+
+	return checkInstance(*output.AwsOutput.ImageId)
+}
+
+func findInstance(filters []*ec2.Filter, chooseFirstResult bool) (*ec2.Instance, error) {
+	input := &ec2.DescribeInstancesInput{Filters: filters}
+
+	instancesOutput, err := service.DescribeEC2Instances(input)
+	if err != nil {
+		return nil, err
+	}
+	if len(instancesOutput.Reservations) == 0 {
+		return nil, fmt.Errorf("No instancesOutput found matching filters: %s", filters)
+	}
+
+	instances := make([]*ec2.Instance, 0)
+	for _, r := range instancesOutput.Reservations {
+		instances = append(instances, r.Instances...)
+	}
+
+	if len(instances) > 1 {
+		if !chooseFirstResult {
+			return nil, errors.New("Mutliple results found without specifying to choose the first result. Please choose more restrictive filters.")
+		}
+	}
+
+	instance := instances[0]
+	return instance, nil
+}
+
+func checkInstance(imageID string) error {
+	for {
+		fmt.Println("Checking images...")
+
+		image, err := service.DescribeImages(&calculate.DescribeImagesInput{AwsInput:&ec2.DescribeImagesInput{ImageIds:[]*string{&imageID}}})
+		if err != nil {
+			return err
+		}
+		state := *image.AwsOutput.Images[0].State
+		finished := state == "available"
+		if finished {
+			log.Println("Image has finished!")
+			break
+		}
+		log.Println("Sleeping for 5 seconds before checking again...")
+		time.Sleep(time.Duration(time.Second * 5))
+	}
+	return nil
 }
