@@ -93,6 +93,7 @@ func CreateSnapshot(evt json.RawMessage, ctx *runtime.Context) (interface{}, err
 
 	switch req.SnapshotType {
 	case InstanceSnapshot:
+		// TODO - break into functions
 		log.Printf("Searching for an appropriate instance to snapshot... filters: %s\n", filters)
 		// this assumes your instancesOutput are tagged with a Name key
 		input := &ec2.DescribeInstancesInput{Filters: filters}
@@ -134,7 +135,7 @@ func CreateSnapshot(evt json.RawMessage, ctx *runtime.Context) (interface{}, err
 		if name == "" {
 			name = fmt.Sprintf("%s-image-%s", *instance.InstanceId, curTime)
 		}
-		fmt.Println(name)
+		
 		input.Name = aws.String(name)
 
 		output, err := service.CreateImage(&calculate.CreateImageInput{AwsInput:&ec2.CreateImageInput{InstanceId:instance.InstanceId}})
@@ -142,23 +143,23 @@ func CreateSnapshot(evt json.RawMessage, ctx *runtime.Context) (interface{}, err
 			return nil, err
 		}
 
-
-		// TODO - finish this section
-		/*var finished bool
 		for {
 			fmt.Println("Checking images...")
-			finished, err = ec2.CheckImages(imageIds)
+
+			image, err := service.DescribeImages(&calculate.DescribeImagesInput{AwsInput:&ec2.DescribeImagesInput{ImageIds:[]*string{output.AwsOutput.ImageId}}})
 			if err != nil {
 				log.Fatal(err)
 			}
+			state := *image.AwsOutput.Images[0].State
+			finished := state == "available"
 			if finished {
-				fmt.Println("Images have finished!")
+				log.Println("Image has finished!")
 				break
 			}
-			fmt.Println("Sleeping for 5 seconds before checking again...")
+			log.Println("Sleeping for 5 seconds before checking again...")
 			time.Sleep(time.Duration(time.Second * 5))
 		}
-		*/
+
 
 	case AutoscalingSnapshot:
 		log.Println("Do autoscaling snapshot things, such as finding an ASG, an instance, snapshotting the instance, updating the ASG, respinning other instancesOutput, etc")
