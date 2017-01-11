@@ -179,8 +179,7 @@ func findInstance(filters []*ec2.Filter, chooseFirstResult bool) (*ec2.Instance,
 
 func checkInstance(imageID string) error {
 	for {
-		fmt.Println("Checking images...")
-
+		log.Println("Checking images...")
 		image, err := service.DescribeImages(&calculate.DescribeImagesInput{AwsInput:&ec2.DescribeImagesInput{ImageIds:[]*string{&imageID}}})
 		if err != nil {
 			return err
